@@ -1,0 +1,7 @@
+{
+  "MODEL_NAME": "llama-3.1-8b-instant",
+  "BATCH_SIZE": 2,
+  "GROQ_API_KEY": "YOUR_GROQ_API_KEY",
+  "input_path": "input.pdf",
+  "custom_instructions": "custom_instructions here"
+}
