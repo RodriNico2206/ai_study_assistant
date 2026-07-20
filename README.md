@@ -39,18 +39,24 @@ The AI Study Assistant consists of several modules:
 * A compatible PDF reader (e.g., PyPDF2)
 
 To set up the environment:
-1. Install Poetry using the official installation instructions.
-2. Create a new virtual environment using `poetry install`.
-3. Activate the virtual environment using `poetry shell`.
+1. Activate the virtual environment using `source venv/bin/activate` 
+2. Install Poetry using the official installation instructions.
+3. Create a new virtual environment using `poetry install`.
 
 ### Configuration
 The AI Study Assistant uses a JSON configuration file to load parameters. The configuration file should contain the following parameters:
+* `MODEL_NAME`: The model identifier used for summary generation (for example `llama-3.1-8b-instant`).
+* `BATCH_SIZE`: The number of PDF pages processed in each batch when generating partial summaries. A smaller batch size reduces token usage per request, while a larger batch size may improve throughput.
+* `GROQ_API_KEY`: Your API key for the Groq service, required to authenticate requests to the Groq API for model access.
 * `input_path`: The path to the input PDF file
 * `custom_instructions`: Optional custom instructions for the summary generation (default: empty string)
 
 Example configuration file:
 ```json
 {
+    "MODEL_NAME": "llama-3.1-8b-instant",
+    "BATCH_SIZE": 2,
+    "GROQ_API_KEY": "YOUR_GROQ_API_KEY",
     "input_path": "path/to/input.pdf",
     "custom_instructions": "Custom instructions for the summary"
 }
