@@ -39,13 +39,15 @@ The AI Study Assistant consists of several modules:
 * A compatible PDF reader (e.g., PyPDF2)
 
 To set up the environment:
-1. Activate the virtual environment using `source venv/bin/activate` 
+1. Activate the virtual environment using `source .venv/bin/activate` 
 2. Install Poetry using the official installation instructions.
 3. Create a new virtual environment using `poetry install`.
 
 ### Configuration
 The AI Study Assistant uses a JSON configuration file to load parameters. The configuration file should contain the following parameters:
 * `MODEL_NAME`: The model identifier used for summary generation (for example `llama-3.1-8b-instant`).
+* `VISION_MODEL_NAME`: The model identifier used for optional visual processing, such as extracting text or context from PDF images, charts, or scanned pages.
+* `REDUCE_MODEL_NAME`: The model identifier used for the hierarchical reduction step, responsible for combining batch summaries into a single global overview.
 * `BATCH_SIZE`: The number of PDF pages processed in each batch when generating partial summaries. A smaller batch size reduces token usage per request, while a larger batch size may improve throughput.
 * `GROQ_API_KEY`: Your API key for the Groq service, required to authenticate requests to the Groq API for model access.
 * `input_path`: The path to the input PDF file
@@ -55,6 +57,8 @@ Example configuration file:
 ```json
 {
     "MODEL_NAME": "llama-3.1-8b-instant",
+    "VISION_MODEL_NAME": "qwen/qwen3.6-27b",
+    "REDUCE_MODEL_NAME": "llama-3.3-70b-versatile",    
     "BATCH_SIZE": 2,
     "GROQ_API_KEY": "YOUR_GROQ_API_KEY",
     "input_path": "path/to/input.pdf",
@@ -71,7 +75,7 @@ poetry install
 ## Usage Example
 To run the AI Study Assistant, use the following command:
 ```bash
-poetry run python src/ai_study_assistant/main.py --config path/to/config.json
+poetry run study-assistant --config path/to/config.json
 ```
 Replace `path/to/config.json` with the actual path to your configuration file.
 
