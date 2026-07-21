@@ -1,7 +1,9 @@
 {
-  "MODEL_NAME": "llama-3.1-8b-instant",
-  "BATCH_SIZE": 2,
-  "GROQ_API_KEY": "YOUR_GROQ_API_KEY",
-  "input_path": "input.pdf",
-  "custom_instructions": "custom_instructions here"
+    "MODEL_NAME": "llama-3.1-8b-instant",
+    "VISION_MODEL_NAME": "qwen/qwen3.6-27b",
+    "REDUCE_MODEL_NAME": "llama-3.3-70b-versatile",    
+    "BATCH_SIZE": 2,
+    "GROQ_API_KEY": "YOUR_GROQ_API_KEY",
+    "input_path": "path/to/input.pdf",
+    "custom_instructions": "Custom instructions for the summary"
 }
