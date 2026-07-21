@@ -8,9 +8,16 @@ packages = [{include = "ai_study_assistant", from = "src"}]
 
 [tool.poetry.dependencies]
 python = "^3.10"
-groq = "^0.18.0"
-python-dotenv = "^1.0.1"
-pypdf = "^5.0.0"
+groq = ">=0.18.0,<1.0.0"
+python-dotenv = ">=1.0.0,<2.0.0"
+pypdf = ">=5.0.0,<6.0.0"
+pytesseract = ">=0.3.10,<0.4.0"
+pdf2image = ">=1.17.0,<2.0.0"
+pillow = ">=10.0.0,<12.0.0"
+
+[tool.poetry.group.dev.dependencies]
+black = ">=24.0.0,<25.0.0"
+pytest = ">=8.0.0,<9.0.0"
 
 [tool.poetry.scripts]
 study-assistant = "ai_study_assistant.main:main"
