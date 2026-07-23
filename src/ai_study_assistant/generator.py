@@ -1,4 +1,5 @@
 import base64
+import time
 from io import BytesIO
 from PIL import Image
 from groq import Groq
@@ -19,6 +20,18 @@ class NotesGenerator:
         image.save(buffered, format="PNG")
         return base64.b64encode(buffered.getvalue()).decode("utf-8")
 
+    def _retry_api_call(self, api_func, max_retries=3, delay=5):
+        """Helper to retry API calls on connection or rate-limit errors."""
+        for attempt in range(1, max_retries + 1):
+            try:
+                return api_func()
+            except Exception as e:
+                print(f"\n    ⚠️ [Groq API Warning] Attempt {attempt}/{max_retries} failed: {e}")
+                if attempt == max_retries:
+                    raise e
+                print(f"    Waiting {delay} seconds before retrying...")
+                time.sleep(delay)
+
     def generate_summary(self, chapter_text: str, custom_instructions: str = "") -> str:
         """Map Phase: Sends a pure text chunk to Groq requesting structured study notes."""
         system_instruction = (
@@ -31,16 +44,18 @@ class NotesGenerator:
         if custom_instructions:
             user_prompt += f"\n\nAdditional user instructions: {custom_instructions}"
 
-        response = self.client.chat.completions.create(
-            model=Config.MODEL_NAME,
-            messages=[
-                {"role": "system", "content": system_instruction},
-                {"role": "user", "content": user_prompt}
-            ],
-            temperature=0.3
-        )
-        
-        return response.choices[0].message.content
+        def _call():
+            response = self.client.chat.completions.create(
+                model=Config.MODEL_NAME,
+                messages=[
+                    {"role": "system", "content": system_instruction},
+                    {"role": "user", "content": user_prompt}
+                ],
+                temperature=0.3
+            )
+            return response.choices[0].message.content
+
+        return self._retry_api_call(_call)
 
     def generate_summary_from_image(self, page_image: Image.Image, page_text: str = "", custom_instructions: str = "") -> str:
         """Multimodal Map Phase: Sends page image + extracted text to Groq Vision model."""
@@ -70,16 +85,18 @@ class NotesGenerator:
         if custom_instructions:
             user_content[0]["text"] += f"\n\nAdditional user instructions: {custom_instructions}"
 
-        response = self.client.chat.completions.create(
-            model=Config.VISION_MODEL_NAME,
-            messages=[
-                {"role": "system", "content": system_instruction},
-                {"role": "user", "content": user_content}
-            ],
-            temperature=0.3
-        )
+        def _call():
+            response = self.client.chat.completions.create(
+                model=Config.VISION_MODEL_NAME,
+                messages=[
+                    {"role": "system", "content": system_instruction},
+                    {"role": "user", "content": user_content}
+                ],
+                temperature=0.3
+            )
+            return response.choices[0].message.content
 
-        return response.choices[0].message.content
+        return self._retry_api_call(_call)
 
     def reduce_summaries(self, consolidated_notes: str) -> str:
         """Reduce Phase: Synthesizes all partial notes into a cohesive global overview."""
@@ -92,13 +109,15 @@ class NotesGenerator:
 
         user_prompt = f"Here are the partial study notes collected from the document:\n\n{consolidated_notes}\n\nPlease generate the final global overview."
 
-        response = self.client.chat.completions.create(
-            model=Config.REDUCE_MODEL_NAME,
-            messages=[
-                {"role": "system", "content": system_instruction},
-                {"role": "user", "content": user_prompt}
-            ],
-            temperature=0.5
-        )
-        
-        return response.choices[0].message.content
+        def _call():
+            response = self.client.chat.completions.create(
+                model=Config.REDUCE_MODEL_NAME,
+                messages=[
+                    {"role": "system", "content": system_instruction},
+                    {"role": "user", "content": user_prompt}
+                ],
+                temperature=0.5
+            )
+            return response.choices[0].message.content
+
+        return self._retry_api_call(_call)
