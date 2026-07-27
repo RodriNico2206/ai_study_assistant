@@ -10,11 +10,9 @@ from ai_study_assistant.notifier import EmailNotifier
 
 def has_graphic_content(page_pdf, page_text: str) -> bool:
     """Detects if a page contains actual charts or diagrams based on native embedded images or explicit figure captions."""
-    # 1. Check for native embedded images in the PDF object
     if hasattr(page_pdf, "images") and len(page_pdf.images) > 0:
         return True
 
-    # 2. Check for explicit figure/table captions (e.g., 'figura 1', 'tabla 2', 'diagrama 3')
     pattern = r"\b(figura|gráfico|grafico|diagrama|tabla|ilustración)\s*\d+"
     if re.search(pattern, page_text.lower()):
         return True
@@ -23,17 +21,20 @@ def has_graphic_content(page_pdf, page_text: str) -> bool:
 
 
 def process_pdf_by_batches(input_file_path: str, batch_size: int):
-    """Reads PDF and yields batch payloads, auto-detecting pages with graphic elements."""
+    """Reads PDF and yields batch payloads, applying hybrid split between Vision API and Local OCR."""
     reader = PdfReader(input_file_path)
     total_pages = len(reader.pages)
 
     current_batch_text = []
-    pdf_images = None  # Lazy loading of images
+    pdf_images = None  # Lazy loading de imágenes
+    vision_calls_count = 0
+
+    print(f" -> [Token Budget] Vision API quota limit: {Config.MAX_VISION_PAGES} page(s).")
 
     for i, page in enumerate(reader.pages):
         page_text = page.extract_text() or ""
 
-        # Apply OCR if selectable text is insufficient
+        # Aplicar OCR local si el texto nativo no es suficiente (PDF escaneado/fotocopia)
         if len(page_text.strip()) < 10:
             if pdf_images is None:
                 print("        [OCR System] Rendering PDF pages into images...")
@@ -45,11 +46,30 @@ def process_pdf_by_batches(input_file_path: str, batch_size: int):
 
         is_visual = has_graphic_content(page, page_text)
 
-        if is_visual:
+        # Si tiene contenido gráfico Y aún no alcanzamos el límite de cuota de Visión:
+        if is_visual and vision_calls_count < Config.MAX_VISION_PAGES:
+            # Si veníamos acumulando texto en un lote previo, lo entregamos primero
+            if current_batch_text:
+                start_p = i + 1 - len(current_batch_text)
+                end_p = i
+                yield {
+                    "type": "text",
+                    "text": "\n".join(current_batch_text),
+                    "start_page": start_p,
+                    "end_page": end_p,
+                }
+                current_batch_text = []
+
             if pdf_images is None:
                 pdf_images = convert_from_path(
                     input_file_path, dpi=Config.PDF_DPI
                 )
+
+            vision_calls_count += 1
+            print(
+                f" -> [Quota Manager] Visual page detected on Page {i+1}. "
+                f"Sending to Vision API ({vision_calls_count}/{Config.MAX_VISION_PAGES})..."
+            )
 
             yield {
                 "type": "vision",
@@ -59,10 +79,17 @@ def process_pdf_by_batches(input_file_path: str, batch_size: int):
                 "end_page": i + 1,
             }
         else:
+            # MODO AHORRO / TEXTO PLANO
+            if is_visual:
+                print(
+                    f" ⚡ [Token Saver Active] Page {i+1} has graphic content but Vision API quota limit was reached. "
+                    f"Falling back to Local OCR text mode..."
+                )
+
             if page_text.strip():
                 current_batch_text.append(f"--- [Page {i+1}] ---\n{page_text}")
 
-            if (i + 1) % batch_size == 0 or (i + 1) == total_pages:
+            if len(current_batch_text) == batch_size or (i + 1) == total_pages:
                 if current_batch_text:
                     start_p = i + 1 - len(current_batch_text) + 1
                     end_p = i + 1
@@ -216,7 +243,6 @@ def main():
         )
 
     except Exception as e:
-        # Extract clean error message
         error_message = None
         if hasattr(e, "body") and isinstance(e.body, dict):
             error_message = e.body.get("error", {}).get("message")

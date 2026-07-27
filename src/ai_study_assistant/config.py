@@ -11,6 +11,7 @@ class Config:
 
     BATCH_SIZE = 2
     PDF_DPI = 130
+    MAX_VISION_PAGES = 3  # Límite por defecto de llamadas a API de visión
     GROQ_API_KEY = None
 
     # Email notification settings (Resend API)
@@ -32,6 +33,7 @@ class Config:
         cls.GROQ_API_KEY = data.get("GROQ_API_KEY") or os.getenv("GROQ_API_KEY")
         cls.BATCH_SIZE = int(data.get("BATCH_SIZE", cls.BATCH_SIZE))
         cls.PDF_DPI = int(data.get("PDF_DPI", cls.PDF_DPI))
+        cls.MAX_VISION_PAGES = int(data.get("MAX_VISION_PAGES", cls.MAX_VISION_PAGES))
 
         # Load Resend notification variables
         cls.RESEND_API_KEY = data.get("RESEND_API_KEY") or os.getenv(
@@ -51,4 +53,8 @@ class Config:
         if cls.BATCH_SIZE <= 0:
             raise ValueError(
                 "Error: BATCH_SIZE must be a positive integer greater than 0."
+            )
+        if cls.MAX_VISION_PAGES < 0:
+            raise ValueError(
+                "Error: MAX_VISION_PAGES must be an integer greater than or equal to 0."
             )
