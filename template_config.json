@@ -1,0 +1,11 @@
+{
+  "MODEL_NAME": "llama-3.1-8b-instant",
+  "VISION_MODEL_NAME": "qwen/qwen3.6-27b",
+  "REDUCE_MODEL_NAME": "llama-3.3-70b-versatile",
+  "BATCH_SIZE": 1,
+  "GROQ_API_KEY": "your_groq_api_key_here",
+  "RESEND_API_KEY": "your_resend_api_key_here",
+  "NOTIFICATION_EMAIL": "your_notification_email_here",
+  "input_path": "/your_input_file.pdf",
+  "custom_instructions": "Analiza el material provisto (ya sea un capítulo de libro, PDF escaneado o documentación web). Extrae el tema central o idea principal en un párrafo breve y desarrolla un esquema estructurado basado en sus secciones o subtítulos clave (máximo 3 puntos clave por sección, omitiendo introducciones generales o contenido de relleno). Si el material contiene gráficos, diagramas, tablas, esquemas visuales o código, analiza su contenido y sintetiza su propósito principal. Resalta en negrita los conceptos, términos clave, fórmulas o definiciones más importantes. Sé sintético, claro y directo. Al final del resumen global, incluye entre 3 y 5 preguntas cortas de autoevaluación sobre los temas explicados, seguidas de una sección final con las respuestas ocultas para ponerme a prueba."
+}
