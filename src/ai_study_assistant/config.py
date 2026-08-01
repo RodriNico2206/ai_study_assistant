@@ -8,10 +8,14 @@ class Config:
     MODEL_NAME = "llama-3.1-8b-instant"
     VISION_MODEL_NAME = "qwen/qwen3.6-27b"
     REDUCE_MODEL_NAME = "llama-3.3-70b-versatile"
+    OPENROUTER_VISION_MODEL = "qwen/qwen-2.5-vl-72b-instruct:free"
+    OPENROUTER_TEXT_MODEL = "meta-llama/llama-3.3-70b-instruct:free"
 
     BATCH_SIZE = 2
     PDF_DPI = 130
+    MAX_VISION_PAGES = 3
     GROQ_API_KEY = None
+    OPENROUTER_API_KEY = None
 
     # Email notification settings (Resend API)
     RESEND_API_KEY = None
@@ -29,9 +33,21 @@ class Config:
         cls.REDUCE_MODEL_NAME = data.get("REDUCE_MODEL_NAME") or os.getenv(
             "REDUCE_MODEL_NAME", cls.REDUCE_MODEL_NAME
         )
+        cls.OPENROUTER_VISION_MODEL = data.get("OPENROUTER_VISION_MODEL") or os.getenv(
+            "OPENROUTER_VISION_MODEL", cls.OPENROUTER_VISION_MODEL
+        )
+        cls.OPENROUTER_TEXT_MODEL = data.get("OPENROUTER_TEXT_MODEL") or os.getenv(
+            "OPENROUTER_TEXT_MODEL", cls.OPENROUTER_TEXT_MODEL
+        )
         cls.GROQ_API_KEY = data.get("GROQ_API_KEY") or os.getenv("GROQ_API_KEY")
-        cls.BATCH_SIZE = int(data.get("BATCH_SIZE", cls.BATCH_SIZE))
-        cls.PDF_DPI = int(data.get("PDF_DPI", cls.PDF_DPI))
+        cls.OPENROUTER_API_KEY = data.get("OPENROUTER_API_KEY") or os.getenv(
+            "OPENROUTER_API_KEY"
+        )
+        
+        # Conversión segura pasando por float() para evitar el error con strings decimales
+        cls.BATCH_SIZE = int(float(data.get("BATCH_SIZE", cls.BATCH_SIZE)))
+        cls.PDF_DPI = int(float(data.get("PDF_DPI", cls.PDF_DPI)))
+        cls.MAX_VISION_PAGES = int(float(data.get("MAX_VISION_PAGES", cls.MAX_VISION_PAGES)))
 
         # Load Resend notification variables
         cls.RESEND_API_KEY = data.get("RESEND_API_KEY") or os.getenv(
@@ -48,7 +64,15 @@ class Config:
             raise ValueError(
                 "Error: GROQ_API_KEY is not set in the JSON file or environment variables."
             )
+        if not cls.OPENROUTER_API_KEY:
+            raise ValueError(
+                "Error: OPENROUTER_API_KEY is not set in the JSON file or environment variables."
+            )
         if cls.BATCH_SIZE <= 0:
             raise ValueError(
                 "Error: BATCH_SIZE must be a positive integer greater than 0."
+            )
+        if cls.MAX_VISION_PAGES < 0:
+            raise ValueError(
+                "Error: MAX_VISION_PAGES must be an integer greater than or equal to 0."
             )
