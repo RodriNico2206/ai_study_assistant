@@ -1,8 +1,14 @@
-import argparse, json, os, re, sys, time
-from pypdf import PdfReader
+import argparse
+import json
+import os
+import re
+import sys
+import time
 from pdf2image import convert_from_path
+from pypdf import PdfReader
 
 from ai_study_assistant.config import Config
+from ai_study_assistant.estimator import TokenEstimator
 from ai_study_assistant.generator import NotesGenerator
 from ai_study_assistant.notifier import EmailNotifier
 
@@ -100,13 +106,27 @@ def process_pdf_by_batches(input_file_path: str, batch_size: int):
                     current_batch_text = []
 
 
-def run_assistant(input_file_path: str, custom_instructions: str = ""):
+def run_assistant(
+    input_file_path: str,
+    custom_instructions: str = "",
+    auto_confirm: bool = False,
+):
     """Orchestrates a hierarchical Map-Reduce process supporting text and cloud vision models."""
     ext = os.path.splitext(input_file_path)[1].lower()
     if ext != ".pdf":
         raise ValueError(
             "This batch processing optimization currently only supports .pdf files."
         )
+
+    # --- PRE-ESTIMACIÓN Y CONFIRMACIÓN ---
+    should_proceed = TokenEstimator.print_report_and_confirm(
+        input_file_path, auto_confirm=auto_confirm
+    )
+    if not should_proceed:
+        print(
+            "\n[Operation cancelled] The user cancelled the execution before calling the APIs.\n"
+        )
+        sys.exit(0)
 
     print(f"Reading and splitting file: {input_file_path}...")
     print(f"Configured batch size: {Config.BATCH_SIZE} pages per text request.")
@@ -115,7 +135,7 @@ def run_assistant(input_file_path: str, custom_instructions: str = ""):
     all_notes = []
 
     # 1. MAP PHASE
-    print(f"--- Starting Hybrid Map Phase ---")
+    print("--- Starting Hybrid Map Phase ---")
     for payload in process_pdf_by_batches(
         input_file_path, batch_size=Config.BATCH_SIZE
     ):
@@ -201,9 +221,17 @@ def run_assistant(input_file_path: str, custom_instructions: str = ""):
 
 def main():
     """CLI entry point for the application."""
-    parser = argparse.ArgumentParser(description="CLI Tool for AI Study Assistant")
+    parser = argparse.ArgumentParser(
+        description="CLI Tool for AI Study Assistant"
+    )
     parser.add_argument(
         "--config", required=True, help="Path to the JSON configuration file"
+    )
+    parser.add_argument(
+        "-y",
+        "--yes",
+        action="store_true",
+        help="Skip the token estimation confirmation prompt and start execution immediately.",
     )
 
     args = parser.parse_args()
@@ -219,7 +247,9 @@ def main():
         with open(args.config, "r", encoding="utf-8") as f:
             params = json.load(f)
     except json.JSONDecodeError:
-        print(f"Error: Failed to parse JSON from {args.config}", file=sys.stderr)
+        print(
+            f"Error: Failed to parse JSON from {args.config}", file=sys.stderr
+        )
         sys.exit(1)
 
     if "input_path" not in params or not params["input_path"]:
@@ -241,6 +271,7 @@ def main():
         run_assistant(
             input_file_path=params["input_path"],
             custom_instructions=params.get("custom_instructions", ""),
+            auto_confirm=args.yes,
         )
 
         EmailNotifier.send_notification(
@@ -274,7 +305,9 @@ def main():
             body=f"An error occurred during execution:\n\n{error_message}",
         )
 
-        print(f"\n[API Error] Execution failed: {error_message}", file=sys.stderr)
+        print(
+            f"\n[API Error] Execution failed: {error_message}", file=sys.stderr
+        )
         sys.exit(1)
 
 
