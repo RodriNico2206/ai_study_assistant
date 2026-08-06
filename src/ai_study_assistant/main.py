@@ -10,7 +10,9 @@ from pypdf import PdfReader
 from ai_study_assistant.config import Config
 from ai_study_assistant.estimator import TokenEstimator
 from ai_study_assistant.generator import NotesGenerator
+from ai_study_assistant.limit_checker import APILimitChecker
 from ai_study_assistant.notifier import EmailNotifier
+from ai_study_assistant.pdf_exporter import convert_md_to_pdf
 
 
 def has_graphic_content(page_pdf, page_text: str) -> bool:
@@ -22,7 +24,6 @@ def has_graphic_content(page_pdf, page_text: str) -> bool:
     if re.search(pattern, page_text.lower()):
         return True
 
-    # If selectable text is negligible, classify as visual page
     if len(page_text.strip()) < 10:
         return True
 
@@ -118,7 +119,7 @@ def run_assistant(
             "This batch processing optimization currently only supports .pdf files."
         )
 
-    # --- PRE-ESTIMACIÓN Y CONFIRMACIÓN ---
+    # --- PRE-ESTIMATION AND CONFIRMATION ---
     should_proceed = TokenEstimator.print_report_and_confirm(
         input_file_path, auto_confirm=auto_confirm
     )
@@ -218,6 +219,13 @@ def run_assistant(
 
     print("Global study guide generated successfully.")
 
+    # 4. AUTOMATIC PDF EXPORT
+    try:
+        pdf_output_path = os.path.join(output_dir, f"{base_name}_global_summary.pdf")
+        convert_md_to_pdf(output_file_path, pdf_output_path)
+    except Exception as e:
+        print(f" -> [PDF Export Warning] Could not generate PDF file: {e}")
+
 
 def main():
     """CLI entry point for the application."""
@@ -232,6 +240,13 @@ def main():
         "--yes",
         action="store_true",
         help="Skip the token estimation confirmation prompt and start execution immediately.",
+    )
+    
+    parser.add_argument(
+        "-c",
+        "--check-limits",
+        action="store_true",
+        help="Only check models and API rate limits/capacity, then exit without processing.",
     )
 
     args = parser.parse_args()
@@ -252,6 +267,20 @@ def main():
         )
         sys.exit(1)
 
+    # Load configuration variables
+    Config.load_from_dict(params)
+
+    # Option 1: Only check limits and exit
+    if args.check_limits:
+        status_ok = APILimitChecker.verify_all_services()
+        if status_ok:
+            print("\nAll systems operational and capacity confirmed.")
+            sys.exit(0)
+        else:
+            print("\nWarnings or limit issues detected with API providers.")
+            sys.exit(1)
+
+    # Option 2: General validation before processing
     if "input_path" not in params or not params["input_path"]:
         print(
             "Error: Missing required parameter 'input_path' in JSON file.",
@@ -259,13 +288,14 @@ def main():
         )
         sys.exit(1)
 
-    Config.load_from_dict(params)
-
     try:
         Config.validate()
     except ValueError as e:
         print(e, file=sys.stderr)
         sys.exit(1)
+
+    # Execute quick quota verification before processing the file
+    APILimitChecker.verify_all_services()
 
     try:
         run_assistant(
