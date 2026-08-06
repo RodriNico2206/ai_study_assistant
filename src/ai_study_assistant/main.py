@@ -12,6 +12,7 @@ from ai_study_assistant.estimator import TokenEstimator
 from ai_study_assistant.generator import NotesGenerator
 from ai_study_assistant.limit_checker import APILimitChecker
 from ai_study_assistant.notifier import EmailNotifier
+from ai_study_assistant.pdf_exporter import convert_md_to_pdf
 
 
 def has_graphic_content(page_pdf, page_text: str) -> bool:
@@ -218,6 +219,13 @@ def run_assistant(
 
     print("Global study guide generated successfully.")
 
+    # 4. AUTOMATIC PDF EXPORT
+    try:
+        pdf_output_path = os.path.join(output_dir, f"{base_name}_global_summary.pdf")
+        convert_md_to_pdf(output_file_path, pdf_output_path)
+    except Exception as e:
+        print(f" -> [PDF Export Warning] Could not generate PDF file: {e}")
+
 
 def main():
     """CLI entry point for the application."""
@@ -259,10 +267,10 @@ def main():
         )
         sys.exit(1)
 
-    # load configguration variables
+    # Load configuration variables
     Config.load_from_dict(params)
 
-    # way 1: if only check limits and exit
+    # Option 1: Only check limits and exit
     if args.check_limits:
         status_ok = APILimitChecker.verify_all_services()
         if status_ok:
@@ -272,7 +280,7 @@ def main():
             print("\nWarnings or limit issues detected with API providers.")
             sys.exit(1)
 
-    # way 2: General validation before processing
+    # Option 2: General validation before processing
     if "input_path" not in params or not params["input_path"]:
         print(
             "Error: Missing required parameter 'input_path' in JSON file.",
@@ -286,7 +294,7 @@ def main():
         print(e, file=sys.stderr)
         sys.exit(1)
 
-    # execute quick quota verification before processing the file
+    # Execute quick quota verification before processing the file
     APILimitChecker.verify_all_services()
 
     try:
