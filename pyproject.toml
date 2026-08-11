@@ -17,7 +17,7 @@ pillow = ">=10.0.0,<12.0.0"
 resend = "^2.34.0"
 matplotlib = "^3.8.0"
 markdown = "^3.5.0"
-weasyprint = "^61.0.0"
+weasyprint = "^69.0"
 
 [tool.poetry.group.dev.dependencies]
 black = ">=24.0.0,<25.0.0"
